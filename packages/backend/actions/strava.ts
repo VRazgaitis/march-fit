@@ -395,10 +395,12 @@ function calculateScoringPreview(
         stravaTypes.includes(stravaActivity.sport_type) ||
         stravaTypes.includes(stravaActivity.type)
       ) {
+        const keyLower = activityName.toLowerCase();
         matchedActivityType =
-          scoringData.activityTypes.find((t) =>
-            t.name.toLowerCase().includes(activityName.toLowerCase())
-          ) || null;
+          scoringData.activityTypes.find((t) => {
+            const nameLower = t.name.toLowerCase();
+            return nameLower.includes(keyLower) || keyLower.includes(nameLower);
+          }) || null;
 
         if (matchedActivityType) {
           mappingSource = "fallback";

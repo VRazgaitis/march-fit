@@ -75,13 +75,20 @@ export interface MappedActivityData {
   externalData: Record<string, unknown>;
 }
 
+// Maps activity type name keywords → Strava sport_type/type values.
+// Multiple keys can map to the same Strava types to handle different naming
+// conventions (e.g. "Running" vs "Outdoor Run" vs "Run").
 const SPORT_TYPE_MAPPING: Record<string, string[]> = {
+  Run: ["Run", "TrailRun", "VirtualRun"],
   Running: ["Run", "TrailRun", "VirtualRun"],
   Cycling: ["Ride", "VirtualRide", "EBikeRide"],
   Swimming: ["Swim"],
   "Strength Training": ["WeightTraining", "Workout"],
   Walking: ["Walk", "Hike"],
   Yoga: ["Yoga"],
+  Rowing: ["Rowing"],
+  "Hi-Intensity Cardio": ["CrossFit", "Elliptical", "Workout"],
+  "Lo-Intensity Cardio": ["Elliptical", "Walk", "Hike", "Golf"],
 };
 
 /**
@@ -254,9 +261,12 @@ export async function detectStravaActivityType(
         .withIndex("challengeId", (q) => q.eq("challengeId", challengeId))
         .collect();
 
-      const matchingType = activityTypes.find((type) =>
-        type.name.toLowerCase().includes(activityName.toLowerCase())
-      );
+      const keyLower = activityName.toLowerCase();
+      const matchingType = activityTypes.find((type) => {
+        const nameLower = type.name.toLowerCase();
+        // Bidirectional: "outdoor run" includes "run", OR "running" includes "run"
+        return nameLower.includes(keyLower) || keyLower.includes(nameLower);
+      });
 
       if (matchingType) {
         return { activityTypeId: matchingType._id };
