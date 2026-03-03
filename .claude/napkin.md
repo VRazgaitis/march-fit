@@ -3,6 +3,7 @@
 ## Corrections
 | Date | Source | What Went Wrong | What To Do Instead |
 |------|--------|----------------|-------------------|
+| 2026-03-03 | self | Assumed feed-rank formula change would visibly affect existing data immediately | Existing activities keep old persisted `feedRank`; run a forced recompute migration/backfill when rank math changes |
 | 2026-03-02 | self | Affinity cron test inserted interactions with timestamps captured before watermark initialization, so incremental query intentionally skipped them | In incremental-watermark tests, initialize state first, then timestamp and insert interaction rows afterward |
 | 2026-03-02 | self | Wrote a parallel tool call with a malformed command string (`sed ...` had an extra `}`), causing a shell parse error | Keep command strings minimal in parallel invocations and quickly rerun failed command standalone before continuing |
 | 2026-03-02 | self | Attempted a large `apply_patch` against `admin/page.tsx` with stale context and it failed | For broad UI rewrites, recat the full file and rewrite in one pass instead of forcing a fragile contextual patch |
@@ -63,6 +64,7 @@
 - For production troubleshooting UX, do not add user-facing alerts for transient feed/connection issues; log to Sentry instead.
 
 ## Patterns That Work
+- For feed ranking knobs, centralize bucket math in `lib/feedScoring` helpers (`computeFeedRank`, `getFeedDayBucket`, `getRankInFeedBucket`) and import them in debug/query code to avoid drift when tuning constants.
 - In Next App Router root layout, avoid manual `<head>` blocks with `next/script`; keep scripts in `<body>` (or metadata APIs) to reduce head hydration mismatch risk.
 - For idea/research tasks, combine source reading with a quick scan of local CI/docs/testing files before proposing changes; recommendations become concrete and repo-specific.
 - For CI triage, `gh run view --log-failed <run-id>` plus a targeted local `pnpm -F web test --run <failing files>` quickly separates real assertion failures from suite-load/import failures.
@@ -85,6 +87,7 @@
 - Deriving env vars inside `convex deploy --cmd` shell strings — escaping hell, fragile, hard to debug. Instead, derive them in `next.config.ts` which runs at build time and can set `process.env` before Next.js compiles.
 
 ## Domain Notes
+- Algorithmic "For You" query currently ranks with `computePersonalizedRank(activity.feedRank, ...)` (day-bucket rank + social boosts) and does not call `computeTimeDecay`/`computeDisplayScore`; freshness changes should target `feedRank` bucketing or query scoring path, not decay constants alone.
 - Scoring configs have types: distance, duration, count, variant
 - `page-with-header` CSS class = `pt-16` to offset fixed navbar
 - Dashboard layout uses `h-dvh` + `overflow-hidden` shell with an internal `main` scroller (`overflow-y-auto`); mobile browser chrome hide behavior is tied to this choice.
